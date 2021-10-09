@@ -1,0 +1,175 @@
+#!/usr/bin/env ruby
+
+# frozen_string_literal: true
+
+require 'thor'
+require 'rosnumbase'
+require 'csv'
+require 'terminal-table'
+require 'json'
+require 'yaml'
+
+##
+# CLI
+class CLI < Thor
+  def self.exit_on_failure?
+    true
+  end
+
+  def initialize(*)
+    super
+    @db = Rosnumbase::Database.new
+  end
+
+  desc 'search NUMBER', 'Search number'
+  option :j, type: :boolean, desc: 'JSON output'
+  option :y, type: :boolean, desc: 'YAML output'
+  def search(number)
+    match = /^(\+?7|8)?(\d{3})(\d{7})$/.match(number)
+    unless match
+      puts 'Wrong number format'
+      return
+    end
+
+    unless @db.tables_exist?
+      puts 'Update database first'
+      return
+    end
+
+    code = match[2].to_i
+    number = match[3].to_i
+    record = @db.find_record(code, number)
+    if record.empty?
+      puts 'Number not found'
+      return
+    end
+
+    if options[:j]
+      puts JSON.generate(record)
+      return
+    end
+
+    if options[:y]
+      puts YAML.dump(record)
+      return
+    end
+
+    rows = record.to_a
+    rows.map! { |row| [row[0].capitalize, row[1]] }
+    table = Terminal::Table.new(rows: rows)
+    table.style = { border: :unicode }
+    puts table
+  end
+
+  desc 'operators', 'List of operators'
+  option :j, type: :boolean, desc: 'JSON output'
+  option :y, type: :boolean, desc: 'YAML output'
+  def operators
+    list = @db.operators
+    if options[:j]
+      puts JSON.generate(list)
+      return
+    end
+
+    if options[:y]
+      puts YAML.dump(list)
+      return
+    end
+
+    list.each { |operator| puts operator }
+  end
+
+  desc 'regions', 'List of regions'
+  option :j, type: :boolean, desc: 'JSON output'
+  option :y, type: :boolean, desc: 'YAML output'
+  def regions
+    list = @db.regions
+    if options[:j]
+      puts JSON.generate(list)
+      return
+    end
+
+    if options[:y]
+      puts YAML.dump(list)
+      return
+    end
+
+    list.each { |region| puts region }
+  end
+
+  desc 'update', 'Update database'
+  def update
+    @db.init_db
+
+    downloader = Rosnumbase::Downloader.new(sources_prev: @db.sources)
+    print 'Parsing source page: '
+    begin
+      sources = downloader.parse_source
+    rescue Rosnumbase::DownloaderError => e
+      puts "request error (#{e})"
+      return
+    end
+    if sources.empty?
+      puts 'not found'
+      return
+    end
+
+    puts "ok (#{sources.length})"
+
+    downloader.on_request do |source_name|
+      print "[#{source_name}] downloading: "
+    end
+
+    downloader.on_request_error do |_source_name, data|
+      puts "request error (#{data[:error]})"
+    end
+
+    downloader.on_no_updates do
+      puts 'no updates'
+    end
+
+    downloader.on_http_error do |_source_name, data|
+      puts "HTTP error (#{data[:code]})"
+    end
+
+    downloader.on_http_range do
+      print '+'
+    end
+
+    downloader.on_success do |source_name, data|
+      puts " ok (#{(data[:data].bytesize.to_f / 1024 / 1024).round(2)} Mb)"
+      puts "[#{source_name}] flushing records"
+      @db.flush_records(source_name)
+      csv = CSV.new(
+        data[:data],
+        headers: true,
+        col_sep: ';',
+        row_sep: "\n",
+        liberal_parsing: true
+      )
+      print "[#{source_name}] adding records: "
+      amount = 0
+      @db.transaction
+      csv.each do |record|
+        amount += 1
+        @db.add_record(
+          source_name,
+          record[0],
+          record[1],
+          record[2],
+          record[3],
+          record[4].strip,
+          record[5].strip
+        )
+      end
+      @db.commit
+      puts "done (#{amount} records)"
+
+      @db.add_source(source_name, data[:uri])
+    end
+
+    downloader.download
+  end
+end
+
+CLI.start(ARGV)

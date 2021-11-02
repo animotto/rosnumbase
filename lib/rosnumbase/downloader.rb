@@ -8,10 +8,10 @@ module Rosnumbase
   class Downloader
     SOURCE_PAGE = 'https://digital.gov.ru/ru/activity/govservices/20/'
     SOURCES = {
-      ABC3XX: %r{https://digital\.gov\.ru/uploaded/files/abc-3xx\w+\.csv},
-      ABC4XX: %r{https://digital\.gov\.ru/uploaded/files/abc-4xx\w+\.csv},
-      ABC8XX: %r{https://digital\.gov\.ru/uploaded/files/avs-8xx\w+\.csv},
-      DEF9XX: %r{https://digital\.gov\.ru/uploaded/files/def-9xx\w+\.csv}
+      ABC3XX: %r{https://digital\.gov\.ru/uploaded/files/abc-3xx[[:graph:]]+\.csv},
+      ABC4XX: %r{https://digital\.gov\.ru/uploaded/files/abc-4xx[[:graph:]]+\.csv},
+      ABC8XX: %r{https://digital\.gov\.ru/uploaded/files/avs-8xx[[:graph:]]+\.csv},
+      DEF9XX: %r{https://digital\.gov\.ru/uploaded/files/def-9xx[[:graph:]]+\.csv}
     }.freeze
 
     RANGE_PIECES = 15

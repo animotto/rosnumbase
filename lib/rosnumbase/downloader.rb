@@ -6,12 +6,12 @@ module Rosnumbase
   ##
   # Data downloader
   class Downloader
-    SOURCE_PAGE = 'https://digital.gov.ru/ru/activity/govservices/20/'
+    SOURCE_PAGE = 'http://opendata.digital.gov.ru/registry/numeric/downloads/'
     SOURCES = {
-      ABC3XX: %r{https://digital\.gov\.ru/uploaded/files/abc-3xx[[:graph:]]+\.csv},
-      ABC4XX: %r{https://digital\.gov\.ru/uploaded/files/abc-4xx[[:graph:]]+\.csv},
-      ABC8XX: %r{https://digital\.gov\.ru/uploaded/files/avs-8xx[[:graph:]]+\.csv},
-      DEF9XX: %r{https://digital\.gov\.ru/uploaded/files/def-9xx[[:graph:]]+\.csv}
+      ABC3XX: %r{http://opendata\.digital\.gov\.ru/downloads/ABC-3xx\.csv\?\d+},
+      ABC4XX: %r{http://opendata\.digital\.gov\.ru/downloads/ABC-4xx\.csv\?\d+},
+      ABC8XX: %r{http://opendata\.digital\.gov\.ru/downloads/ABC-8xx\.csv\?\d+},
+      DEF9XX: %r{http://opendata\.digital\.gov\.ru/downloads/DEF-9xx\.csv\?\d+}
     }.freeze
 
     RANGE_PIECES = 15
